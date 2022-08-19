@@ -1,0 +1,24 @@
+$CanonicalName = Read-Host "Enter LUN canonicalName"
+vcName = "dtc-vcenter6n.dany.nycnet"
+#get list of hosts
+$hostslist = Get-Content "c:\temp\esxList.txt"
+# Load VMware PowerShell Module (PowerCLI):
+If ((Get-Module VMware.VimAutomation.Core -ErrorAction SilentlyContinue) -eq $null)
+{
+    Import-Module VMware.VimAutomation.Core
+}
+#check if connected to VC and connect if not
+$viserver = $global:defaultviserver.Name
+if ($viserver -ne $vcName) {
+Connect-VIServer -Server dtc-vcenter6n.dany.nycnet
+}
+#Start looping ESXi hosts and detach LUNs
+foreach ($vmhost in $hostslist){
+    write-host “Starting $vmhost”
+    $esx = get-vmhost $vmhost
+    
+        $storSys = Get-View $esx.Extensiondata.ConfigManager.StorageSystem
+        $lunUuid = (Get-ScsiLun -VmHost $VMHost | where {$_.CanonicalName -eq $CanonicalName}).ExtensionData.Uuid
+        "Detaching $lunUuid"
+        $storSys.DetachScsiLun($lunUuid) 
+}
