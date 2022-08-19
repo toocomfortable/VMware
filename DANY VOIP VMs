@@ -1,0 +1,23 @@
+$user = 'root'
+$pw = 'Cisco321!'
+Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false
+
+Connect-VIServer -Server DTC-VOIP1-ESXI.DANY.NYCNET -User $user -Password $pw 
+
+Get-Snapshot DTC-VOIP-IMGLACCT1 |Remove-Snapshot -RemoveChildren -Confirm:$false -RunAsync
+
+Connect-VIServer -Server DTC-VOIP2-ESXI.DANY.NYCNET -User $user -Password $pw 
+
+Get-Snapshot DTC-VOIP-IMGLREC1 | Remove-Snapshot -RemoveChildren -Confirm:$false -RunAsync
+
+Connect-VIServer -Server HGN-VOIP1-ESXI.DANY.NYCNET -User $user -Password $pw 
+
+Get-Snapshot HGN-VOIP-IMGLREC3 | Remove-Snapshot -RemoveChildren -Confirm:$false -RunAsync
+
+Get-VM DTC-VOIP-IMGLACCT1 | New-Snapshot -Name "BeforePatch" -Description "Before Patching" -Quiesce -Memory -Confirm:$false -RunAsync
+
+Get-VM DTC-VOIP-IMGLrec1 | New-Snapshot -Name "BeforePatch" -Description "Before Patching" -Quiesce -Memory -Confirm:$false -RunAsync
+
+Get-VM HGN-VOIP-IMGLREC3| New-Snapshot -Name "BeforePatch" -Description "Before Patching" -Quiesce -Memory -Confirm:$false -RunAsync
+
+#Get-VM DTC-VOIP-IMGLrec2 | New-Snapshot -Name "BeforePatch" -Description "Before Patching" -Quiesce -Memory -Confirm:$false -RunAsync
