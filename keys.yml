@@ -1,0 +1,10 @@
+---
+# keys for VM_Windows
+vcenter_user: administrator@vsphere.local
+vcenter_pass: 
+password: 
+domainadmin: 
+domainadminpassword: 
+vcenter_server: dtc-vcenter6n.dany.nycnet
+datacenter_name: DANYDC
+cluster_name: PRODSYCLU
