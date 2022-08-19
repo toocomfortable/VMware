@@ -1,0 +1,46 @@
+- hosts: localhost
+  tasks:
+  - name: Include secret environment items
+    include_vars:
+      file: keys.yml
+      name: keys
+  - name: DTC-TESTVM1
+    vmware_guest:
+      hostname: "{{ keys.vcenter_server }}"
+      username: "{{ keys.vcenter_user }}"
+      password: "{{ keys.vcenter_pass }}"
+      validate_certs: False
+      name: DTC-TESTVM1
+      template: WIN2019STD
+      datacenter: "{{ keys.datacenter_name }}"
+      folder: /{{ keys.datacenter_name }}/vm
+      cluster: "{{ keys.cluster_name }}"
+      datastore: "SSDCluster"
+      disk:
+        - size_gb: "150"
+          type: "thick"
+      hardware:
+        memory_mb: "32768"
+        num_cpus: "4"
+        num_cpu_cores_per_socket: "1"
+      networks:
+      - name: VM Network
+        ip: 10.229.31.86
+        netmask: 255.255.255.0
+        gateway: 10.229.31.1
+        type: static
+        dns_servers: 10.229.31.195
+      customization:
+        hostname: "DTC-TESTVM1"
+        dns_servers:
+        - 10.229.31.195
+        - 10.229.31.245
+        domain: "DANY.NYCNET"
+        joindomain: "DANY.NYCNET"
+        password: "{{keys.password}}"
+        domainadmin: "{{keys.domainadmin}}"
+        domainadminpassword: "{{keys.domainadminpassword}}"
+        timezone: "035"
+      state: poweredon
+      wait_for_ip_address: yes
+    delegate_to: localhost
