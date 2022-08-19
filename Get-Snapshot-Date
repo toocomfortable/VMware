@@ -1,0 +1,71 @@
+
+param (
+
+    $VirtualCenter = "DTC-VCENTER6N",
+    $smtpServer = "SMTP.DANY.NYCNET",
+    $smtpFrom = "vmware@dany.nycnet",
+    $smtpTo = "SaragneseM@dany.nyc.gov, SepkowskiM@dany.nyc.gov, man@dany.nyc.gov, guzmane@dany.nyc.gov, VetryukA@dany.nyc.gov",
+    $smtpSubject = "Weekly Report of VMware Snapshots",
+    $SnapShotsOlderThanXDays = 7,
+    $dateofweek = (get-date).day
+)
+
+Get-Module -ListAvailable VMware.VimAutomation.* | Import-Module -ErrorAction SilentlyContinue
+If ($global:DefaultVIServer) {
+    Disconnect-VIServer * -Confirm:$false -ErrorAction SilentlyContinue
+}
+$VCServer = Connect-VIServer -Server $VirtualCenter
+
+$VmsWithAllowedSnaps = @(".*SnappyImage.*")
+$LogEntriesPerVM = 4000
+ 
+$VMs = Get-VM
+Foreach ($VmsWithAllowedSnap in $VmsWithAllowedSnaps) {
+    $VMs = $VMs | Where {$_.Name -notmatch $VmsWithAllowedSnap}
+}
+$SnapShots = $VMs | Get-Snapshot
+ 
+$date = Get-Date
+$measure = Measure-Command { 
+    $report = $Snapshots | Select-Object VM, Name, @{Name="User"; Expression = { (Get-VIEvent -Entity $_.VM -MaxSamples $LogEntriesPerVM -Start $_.Created.AddSeconds(-10) | Where {$_.Info.DescriptionId -eq "VirtualMachine.createSnapshot"} | Sort-Object CreatedTime | Select-Object -First 1).UserName}}, Created, @{Name="Days Old"; E={(New-TimeSpan -Start $date -End $_.Created).Days  }}, Description, @{Label="SnapshotsizeGB";E={[math]::round((Get-Snapshot -VM $_.vm |Measure-Object -Sum SizeGb).sum)}} | Sort-Object -Property "Created"
+}
+#($measure).TotalMinutes
+ 
+$report = $report | Where {($_.Created).AddDays([int]$SnapShotsOlderThanXDays) -lt (Get-Date)} 
+
+$head = @"
+    <html>
+    <head>
+    <title>Report</title>
+    <STYLE type="text/css">
+        BODY{font-family: Arial; font-size: 8pt;}
+        H1{font-size: 16px;}
+        H3{font-size: 12px;}
+        TABLE{border: 1px solid black; border-collapse: collapse; font-size: 8pt;}
+		TH{border: 1px solid black; background: #dddddd; padding: 5px; color: #000000;}
+		TD{border: 1px solid black; padding: 5px; }
+		
+    </STYLE>
+    
+    </head>
+    <body>
+    <h1 align=""center"">VMware Snapshots older than 7 Days</h1>
+   
+"@
+
+ 
+$postContent = @"
+<p>Number of Snapshots: $($report.count)</p>
+<p>Generated on $($ENV:COMPUTERNAME)</p>
+"@
+ 
+#Send Email Report
+$date = Get-Date -Format g
+$message = New-Object System.Net.Mail.MailMessage $smtpFrom, $smtpTo
+$message.Subject = $smtpSubject,$date 
+$message.IsBodyHTML = $true
+ 
+$SnapshotReportHTML = $report | ConvertTo-Html -Head $head -PreContent "Report Date: $date" -PostContent $PostContent
+$message.Body = $SnapshotReportHTML | Out-String
+$smtp = New-Object Net.Mail.SmtpClient($smtpServer)
+$smtp.Send($message)
