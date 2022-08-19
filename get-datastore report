@@ -1,0 +1,82 @@
+param (
+
+    $VirtualCenter = "DTC-VCENTER6N"
+)
+
+Get-Module -ListAvailable VMware.VimAutomation.* | Import-Module -ErrorAction SilentlyContinue
+If ($global:DefaultVIServer) {
+    Disconnect-VIServer * -Confirm:$false -ErrorAction SilentlyContinue
+}
+$VCServer = Connect-VIServer -Server $VirtualCenter
+
+$head = @"
+
+<style>
+
+TABLE{border-width: 1px;border-style: solid;border-color: black;border-collapse: collapse;}
+
+TH{border-width: 1px;padding: 0px;border-style: solid;border-color: black;;background-color:thistle}
+
+TD{border-width: 1px;padding: 0px;border-style: solid;border-color: black;}
+
+</style>
+
+"@
+
+$date = get-date -Format g
+
+$body = @()
+
+
+  $body += Get-Datastore -Server $vc |
+
+    Select @{N='Datastore ';E={$_.Name}},
+
+#    @{N='vCenter';E={$vc.Name}},
+
+    @{N='CapacityGB';E={[math]::Round($_.CapacityGB,1)}},
+
+    @{N='FreeSpaceGB';E={[math]::Round($_.FreeSpaceGB,1)}},
+
+    @{N='UsedPercent';E={[math]::Round(($_.CapacityGB - $_.FreeSpaceGB)/$_.CapacityGB*100,1)}},
+
+    @{N='FreePercent';E={
+
+        $p = [math]::Round((1 - ($_.CapacityGB - $_.FreeSpaceGB)/$_.CapacityGB)*100,1)
+
+        if($p -lt 10){"#br#$($p)"}
+
+        elseif($p -lt 30){"#by#$($p)"}
+
+        else{"#bg#$($p)"}
+
+    }}
+
+
+
+$body = $body |
+
+    Sort-Object -Property UsedPercent -Descending |
+
+    ConvertTo-Html -Head $head
+
+$body = $body.Replace('>#br#',' bgcolor="red">').Replace('>#by#',' bgcolor="yellow">').Replace('>#bg#',' bgcolor="green">')
+
+
+$sMail = @{
+
+    To = 'SaragneseM@dany.nyc.gov', 'SepkowskiM@dany.nyc.gov', 'guzmane@dany.nyc.gov', 'VetryukA@dany.nyc.gov', 'KamalA@dany.nyc.gov','man@dany.nyc.gov'
+
+    From = 'DatastoresRPT@DANY.NYC.GOV'
+
+    Subject = "DANY Datastore Report - $date"
+
+    BodyAsHtml = $true
+
+    Body = $body | Out-String
+
+    SmtpServer = 'smtp.dany.nycnet'
+
+}
+
+Send-MailMessage @sMail 
