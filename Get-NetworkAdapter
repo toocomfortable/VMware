@@ -1,0 +1,17 @@
+Connect-VIServer prdvc01 
+
+$computers = import-csv "c:\scripts\csv\replication\winnetworks.csv"
+
+foreach ($item in $computers){
+$vm = get-vm $item.name
+Get-NetworkAdapter -vm $vm | select networkname, name, parent | Export-Csv c:\scripts\csv\replication\VLANS.csv -Append}
+#$network_adapter = Get-NetworkAdapter -vm $vm | select networkname, name}
+
+
+$computers = import-csv "C:\scripts\csv\replication\winnetworks.csv"
+
+$vm = get-vm $name
+foreach ($item in $Computers){
+$vm = get-vm doimdt01
+Get-NetworkAdapter -vm $vm
+$network_adapter = Get-NetworkAdapter -vm $vm}
