@@ -1,0 +1,33 @@
+# Load the PowerCLI SnapIn
+#Add-PSSnapin VMware.VimAutomation.Core -ea "SilentlyContinue"
+#Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false | Out-Null
+
+Param (
+    [string]$VIServer = "dtc-vcenter6n.dany.nycnet",
+    [string]$ConfigPath = "C:\Temp\ESXI",
+    [int]$Days = 5
+)
+
+Get-Module -ListAvailable VMware.VimAutomation.* | Import-Module -ErrorAction SilentlyContinue
+
+#If (-not (Get-PSSnapin VMware.VimAutomation.Core -ErrorAction SilentlyContinue))
+#{   Try { Add-PSSnapin VMware.VimAutomation.Core -ErrorAction Stop }
+#    Catch { Write-Host "Unable to load PowerCLI, is it installed?" -ForegroundColor Red; Break }
+#}
+$Time = Get-Date -Format "MMddyy-hhmm"
+If (-not (Test-Path $ConfigPath\Old))
+{   New-Item $ConfigPath\Old -ItemType Directory
+}
+#Add date/time to the configuration file name and move to archive
+ForEach ($File in (Get-ChildItem $ConfigPath\*.tgz))
+{   $NewName = "$($File.Basename)-$Time.tgz"
+    Copy-Item $File.FullName "$ConfigPath\Old\$NewName"
+    Remove-Item $File.FullName
+}
+#Download latest configuration files
+Connect-VIServer $VIServer
+Get-VMHost | Get-VMHostFirmware -BackupConfiguration -DestinationPath $ConfigPath
+#Remove older files in archive
+ForEach ($File in (Get-ChildItem $ConfigPath\Old\*.tgz | Where LastWriteTime -LE (Get-Date).AddDays(-$Days)))
+{   Remove-Item $File.FullName
+}
