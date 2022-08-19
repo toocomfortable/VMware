@@ -1,0 +1,29 @@
+Connect-VIServer dtc-vcenter6n
+$vms = Import-CSV "C:\Temp\VMware\Sharepoint\NewVMs-SP-WEB.csv"
+
+foreach ($vm in $vms){
+#Assign Variables
+$Template = Get-Template -Name $vm.Template
+$Cluster = $vm.Cluster
+$Datastore = "SSDCluster"
+#$Custom = Get-OSCustomizationSpec -Name $vm.Customization
+$vCPU = $vm.vCPU
+$Memory = $vm.Memory
+$Network = $vm.Network
+$Location = $vm.Location
+$VMName = $vm.Name
+$HardDrive = $vm.Harddrive
+$HardDrive2 = $vm.Harddrive2
+
+#Where the VM gets built
+New-VM -Name $VMName -Template $Template -ResourcePool (Get-Cluster $Cluster | Get-ResourcePool) -Location $Location -StorageFormat Thick -Datastore $Datastore 
+Start-Sleep -Seconds 10
+
+#Where the vCPU, memory, and network gets set
+$NewVM =  $VMName
+Set-VM $NewVM  -MemoryGB $Memory -NumCpu $vCPU -Confirm:$false
+Get-NetworkAdapter $NewVM  | Set-NetworkAdapter -NetworkName $Network -Confirm:$false
+New-HardDisk -vm $NewVM -CapacityGB 100 -StorageFormat Thick 
+New-HardDisk -vm $NewVM -CapacityGB 100 -StorageFormat Thick  
+}
+
